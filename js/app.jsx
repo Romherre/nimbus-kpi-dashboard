@@ -1,0 +1,196 @@
+// Nimbus — Panel de KPIs (demo)
+// Producto SaaS B2B ficticio, usado solo como caso de estudio de portfolio.
+// Stack: React 18 (hooks) + Chart.js. Sin build step: Babel standalone transpila este
+// archivo en el navegador, por eso el <script type="text/babel"> en index.html.
+
+const { useState, useEffect, useRef } = React;
+
+// ---------------------------------------------------------------------------
+// MOCK DATA — reemplazar por datos reales si esto se conecta a una API.
+// ---------------------------------------------------------------------------
+
+const KPIS = [
+  { label: "MRR", value: "$48.250", delta: "+6,4% vs mes anterior", positive: true },
+  { label: "Usuarios activos", value: "3.180", delta: "+3,1% vs mes anterior", positive: true },
+  { label: "Churn rate", value: "2,1%", delta: "-0,4 pts vs mes anterior", positive: true },
+  { label: "NPS", value: "62", delta: "+4 pts vs mes anterior", positive: true },
+];
+
+const MRR_TREND = {
+  labels: ["Ene", "Feb", "Mar", "Abr", "May", "Jun"],
+  data: [36800, 38950, 41200, 43500, 45300, 48250],
+};
+
+const TICKETS_POR_ESTADO = {
+  labels: ["Abiertos", "En progreso", "Resueltos", "Cerrados"],
+  data: [14, 9, 22, 55],
+  colors: ["#f59e0b", "#8b5cf6", "#22c55e", "#94a3b8"],
+};
+
+const CUENTAS_EN_RIESGO = [
+  { cuenta: "Acme Robotics", plan: "Enterprise", uso: "Bajo (últimos 30 días)", riesgo: "alto" },
+  { cuenta: "Bluepeak Studio", plan: "Pro", uso: "Medio", riesgo: "medio" },
+  { cuenta: "Veridian Labs", plan: "Pro", uso: "Sin login hace 21 días", riesgo: "alto" },
+  { cuenta: "Orbit Logistics", plan: "Enterprise", uso: "Estable", riesgo: "bajo" },
+  { cuenta: "Cobalt Health", plan: "Free → Pro (trial)", uso: "Activo, en evaluación", riesgo: "medio" },
+];
+
+// ---------------------------------------------------------------------------
+// COMPONENTES
+// ---------------------------------------------------------------------------
+
+function KpiCard({ label, value, delta, positive }) {
+  return (
+    <div className="kpi-card">
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value">{value}</div>
+      <div className={`kpi-delta ${positive ? "positive" : "negative"}`}>{delta}</div>
+    </div>
+  );
+}
+
+function LineChartCard() {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    chartRef.current = new Chart(canvasRef.current, {
+      type: "line",
+      data: {
+        labels: MRR_TREND.labels,
+        datasets: [{
+          label: "MRR",
+          data: MRR_TREND.data,
+          borderColor: "#8b5cf6",
+          backgroundColor: "rgba(139, 92, 246, 0.12)",
+          tension: 0.35,
+          fill: true,
+          pointRadius: 4,
+          pointBackgroundColor: "#8b5cf6",
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            ticks: { callback: (v) => "$" + (v / 1000) + "k" },
+            grid: { color: "#f1f2f4" },
+          },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+
+    // Limpieza: destruir el chart al desmontar para evitar memory leaks / charts duplicados
+    return () => chartRef.current.destroy();
+  }, []);
+
+  return (
+    <div className="chart-card">
+      <h3>MRR — últimos 6 meses</h3>
+      <div className="chart-wrap">
+        <canvas ref={canvasRef}></canvas>
+      </div>
+    </div>
+  );
+}
+
+function DonutChartCard() {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    chartRef.current = new Chart(canvasRef.current, {
+      type: "doughnut",
+      data: {
+        labels: TICKETS_POR_ESTADO.labels,
+        datasets: [{
+          data: TICKETS_POR_ESTADO.data,
+          backgroundColor: TICKETS_POR_ESTADO.colors,
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "65%",
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } },
+        },
+      },
+    });
+
+    return () => chartRef.current.destroy();
+  }, []);
+
+  return (
+    <div className="chart-card">
+      <h3>Tickets de soporte por estado</h3>
+      <div className="chart-wrap">
+        <canvas ref={canvasRef}></canvas>
+      </div>
+    </div>
+  );
+}
+
+function RiskTable() {
+  return (
+    <div className="table-card">
+      <h3>Cuentas con riesgo de churn</h3>
+      <table className="risk-table">
+        <thead>
+          <tr>
+            <th>Cuenta</th>
+            <th>Plan</th>
+            <th>Uso reciente</th>
+            <th>Riesgo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {CUENTAS_EN_RIESGO.map((row) => (
+            <tr key={row.cuenta}>
+              <td>{row.cuenta}</td>
+              <td>{row.plan}</td>
+              <td>{row.uso}</td>
+              <td><span className={`risk-pill ${row.riesgo}`}>{row.riesgo}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <div>
+          <h1>Panel de Producto — Nimbus</h1>
+          <span className="badge-product">SaaS B2B · Demo de portfolio</span>
+        </div>
+        <div className="period">Período: Junio 2026</div>
+      </div>
+
+      <div className="kpi-grid">
+        {KPIS.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+      </div>
+
+      <div className="charts-row">
+        <LineChartCard />
+        <DonutChartCard />
+      </div>
+
+      <RiskTable />
+
+      <div className="dashboard-footer">
+        Datos simulados con fines demostrativos. Proyecto de portfolio — React + Chart.js.
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
